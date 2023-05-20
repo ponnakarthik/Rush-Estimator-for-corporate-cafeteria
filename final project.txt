@@ -1,0 +1,65 @@
+import RPi.GPIO as GPIO
+import time
+
+# GPIO pins
+TRIG_PIN = 23
+ECHO_PIN = 24
+
+# Set up GPIO mode
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(TRIG_PIN, GPIO.OUT)
+GPIO.setup(ECHO_PIN, GPIO.IN)
+
+def calculate_distance():
+    # Trigger a pulse
+    GPIO.output(TRIG_PIN, GPIO.HIGH)
+    time.sleep(0.00001)
+    GPIO.output(TRIG_PIN, GPIO.LOW)
+
+    # Measure the echo time
+    pulse_start = time.time()
+    pulse_end = time.time()
+    while GPIO.input(ECHO_PIN) == GPIO.LOW:
+        pulse_start = time.time()
+    while GPIO.input(ECHO_PIN) == GPIO.HIGH:
+        pulse_end = time.time()
+
+    # Calculate distance based on the speed of sound
+    pulse_duration = pulse_end - pulse_start
+    speed_of_sound = 34300  # cm/s
+    distance = (speed_of_sound * pulse_duration) / 2
+
+    return distance
+
+def estimate_queue():
+    total_distance = 0
+    num_samples = 10
+
+    # Take multiple distance measurements and average them
+    for _ in range(num_samples):
+        distance = calculate_distance()
+        total_distance += distance
+        time.sleep(0.1)
+
+    average_distance = total_distance / num_samples
+
+    # Customize these thresholds based on your cafeteria layout
+    if average_distance < 20:
+        return "No queue"
+    elif average_distance < 40:
+        return "Short queue"
+    elif average_distance < 60:
+        return "Medium queue"
+    else:
+        return "Long queue"
+
+try:
+    while True:
+        queue_status = estimate_queue()
+        print("Queue status:", queue_status)
+        time.sleep(1)
+
+except KeyboardInterrupt:
+    print("Program stopped by user")
+finally:
+    GPIO.cleanup()
